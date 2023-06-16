@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css"  href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.8.7/dist/semantic.css">
+    <script  src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.8.7/dist/semantic.js">  </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-xmlrpc/0.4.3/jquery.xmlrpc.js"> </script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <link href="https://vjs.zencdn.net/7.8.4/video-js.css" rel="stylesheet" />
+    <script src="http://vjs.zencdn.net/7.8.4/video.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-youtube/2.6.1/Youtube.min.js"></script>
+    
+    <script>
+
+      // Variables to store relevant information
+      var ID='{{videoID}}';
+      var userid='{{username}}';
+      var username='{{name}}';
+      var question_time;
+      var question_text;
+      var question_id;
+      var question_user_id;
+      var question_user_name;
+
+      // Fill the answers table for the question with id "id"
+      function updateAnswerstable(id){
+        $.ajax({
+          url: "/API/qa/answers/"+id+"/",
+          type: "GET",
+          dataType: "json",
+          success: function (data) {
+            console.log(data);
+            $('#answersTable > tbody:last-child').empty()
+            data["answers"].forEach(v => {
+              console.log(v["answer_id"]+" "+v["question_id"]+" "+v["user_id"]+" "+v["user_name"]+" "+v["text"])
+              $('#answersTable > tbody:last-child').append('<tr><td>' +v["user_id"]+'</td><td>' +v["user_name"]+'</td><td>'+v["text"]+'</td></tr>'); 
+            });
+          }
+        });
+      }
+
+      // Fill the questions table for the video with id "ID"
+      function updateQuestionstable(ID){
+        $.ajax({
+          url: "/API/qa/questions/"+ID+"/",
+          type: "GET",
+          dataType: "json",
+          success: function (data) {
+            console.log(data);
+            $('#questionsTable > tbody:last-child').empty()
+            data["questions"].forEach(v => {
+              console.log(v["question_id"]+" "+v["video_id"]+" "+v["question_time"]+" "+v["user_id"]+" "+v["user_name"]+" "+v["text"])
+              $('#questionsTable > tbody:last-child').append('<tr data-uid="'+v["user_id"]+'" data-uname="'+v["user_name"]+'" data-qid="'+v["question_id"]+'" data-time="'+v["question_time"]+'" data-text="'+v["text"]+'" class="product" role="button" data-ID=""> <td>' +v["question_time"]+'</td><td>' +v["text"]+'</td></tr>');
+            });
+          }
+        });
+      }
+
+      // Add a new question using the user input
+      function addNewQuestion(video_id, question_time, user_id, user_name, text){
+        let requestData={"video_id": video_id, 'question_time': question_time, "user_id": user_id, 'user_name': user_name, "text": text}
+        $.ajax({
+          url: '/API/qa/questions/',
+          type: "POST",
+          dataType: "json",
+          contentType: 'application/json',
+          data: JSON.stringify(requestData),
+          success: function(data){
+            console.log("response for question creation"+data)
+            console.log(data)
+            // Update the table to include the new question
+            updateQuestionstable(ID)
+            
+            // Increment the number of the questions of the user upon successfully adding a new question
+            $.ajax({
+              url: '/API/users/'+userid+'/questions/',
+              type: "PUT",
+              dataType: "json",
+              success: function (data) {
+              console.log(data)
+              }
+            });
+
+            // Increment the number of questions of the video upon successfully adding a new question
+            $.ajax({
+                
+              url: '/API/videos/'+ID+'/questions/',
+              type: "PUT",
+              dataType: "json",
+              success: function (data) {
+                console.log(data)
+              }
+            });
+          }
+        });
+      }
+
+      // Function that adds a new user based on the user input (text) and the information fetched from the clickable row of the questions table
+      function addNewAnswer(question_id, user_id, user_name, a_text){
+        let requestData={"question_id": question_id, 'user_id': user_id, "user_name": user_name, 'text': a_text}
+        $.ajax({
+          url: '/API/qa/answers/',
+          type: "POST",
+          dataType: "json",
+          contentType: 'application/json',
+          data: JSON.stringify(requestData),
+          
+          success: function(data){ 
+            console.log("response for answer creation"+data)
+            console.log(data)
+            
+            // Increment number of answers of the user upon successfully adding a question
+            $.ajax({
+              url: '/API/users/'+userid+'/answers/',
+              type: "PUT",
+              dataType: "json",
+              success: function (data) {
+                console.log(data)
+              },    
+            });
+
+            // Update the answers table to include the new answer 
+            updateAnswerstable(question_id)   
+          }
+        });
+      }
+
+      $(document).ready(function(){
+
+        // Hide question submission button and elements related to answers
+        $("#submit_div").hide();
+        $("#answersdiv").hide();
+
+        // Populate the questions table
+        updateQuestionstable(ID);
+        
+        var vPlayer = videojs('videoPlayer');
+
+        // Load the video with id "ID"
+        $.ajax({
+          url: '/API/videos/'+ID+'/',
+          type: "GET",
+          dataType: "json",
+          success: function (data) {
+            console.log(data)
+            url = data['url']
+            document.getElementById("vtitle").innerHTML = data['description']
+            console.log(url)
+            vPlayer.src({ "type": "video/youtube", "src": url});
+            vPlayer.play()
+            
+            // Increase number of views of video upon successfully loading the video
+            $.ajax({  
+              url: '/API/users/'+userid+'/views/',
+              type: "PUT",
+              dataType: "json",
+              success: function (data) {
+                console.log(data)
+              }
+            })
+          }
+        });
+
+        // Make rows of the questions' table clickable and store relevant information of the row
+        $('.questionTab').on("click", "tr", function(){
+
+          // Save information about the question
+          question_time = $(this).data('time');
+          question_text = $(this).data('text');
+          question_id = $(this).data('qid');
+          question_user_id = $(this).data('uid');
+          question_user_name = $(this).data('uname');
+
+          // Identify variables to write on HTML body
+          document.getElementById("qtime").innerHTML = question_time;
+          document.getElementById("uname").innerHTML = question_user_name;
+          document.getElementById("uid").innerHTML = question_user_id ;
+          document.getElementById("qtext").innerHTML = question_text;
+
+          $("#answersdiv").show();
+          $("#newAnswer").show();
+          $("#ans_submit_div").hide();
+
+          // Update the answers table with the question chosen
+          updateAnswerstable(question_id);
+        });
+
+        // Clickable button that shows a submission box to input the answer text
+        $("#newAnswer").click(function(){
+
+          $("#newAnswer").hide();
+          $("#ans_submit_div").show();
+        });  
+
+        // Button to submit the answer
+        $("#submitAnswer").click(function(){
+
+          var answer_text=$("#newTextAnswer").val()
+          addNewAnswer(question_id, userid, username, answer_text);
+          updateAnswerstable(question_id);
+          $("#newAnswer").show();
+          $("#ans_submit_div").hide();
+        });
+
+        // Button to pause the video
+        $("#buttonVideoPause").click(function(){
+
+          vPlayer.pause()
+          var pauseTime = vPlayer.currentTime()
+          console.log(pauseTime)
+          $("#resumetime").val(pauseTime)
+        });
+
+        // Button to resume the video
+        $("#buttonVideoResume").click(function(){
+          
+          vPlayer.currentTime( parseFloat($("#resumetime").val()))
+          $("#newQuestion").show();
+          $("#submit_div").hide();
+          vPlayer.play()
+        });
+
+        // Button to express intent of making a new question that shows a submission box to input the question text
+        $("#newQuestion").click(function(){
+
+          $("#submit_div").show();
+          // Pause the video and store the current time
+          vPlayer.pause()
+          var pauseTime = vPlayer.currentTime()
+          console.log(pauseTime)
+          $("#resumetime").val(pauseTime)
+          $("#newQuestion").hide();
+        });
+
+        // Button to submit the question
+        $("#submitQuestion").click(function(){
+            
+          $("#newQuestion").show();
+          // Resume the video with the stored time
+          vPlayer.currentTime( parseFloat($("#resumetime").val()))
+          vPlayer.play()
+
+          time=$("#resumetime").val()
+          text=$("#newText").val()
+          addNewQuestion(ID, time, userid, username, text);
+
+          $("#submit_div").hide();
+        })
+
+      });
+    </script>
+  </head>
+
+
+
+  <body>
+    <!--top div-->
+    <div style="width: 100%; overflow: hidden;">
+      <!--top left div-->
+      <div style="width: 520px; float: left;"> 
+
+        <h3>   <span id="vtitle"></span></h3>
+        <br>
+        <!--video-->
+        <video  id="videoPlayer" controls 
+        class="video-js vjs-default-skin"
+        width="500"
+        data-setup='{ "autoplay": true, "preload": "auto", "techOrder": ["youtube"], "sources": [{ "type": "video/youtube" }'>
+        </video>
+
+        <!--video controls-->
+        <h3>Control Video</h3>
+
+        <button class="ui button" id="buttonVideoPause">
+          PAUSE Video
+        </button> 
+
+        <div class="ui input focus" >
+          <input type="text" id="resumetime">
+        </div>
+
+        <button class="ui button" id="buttonVideoResume">
+          RESUME Video
+        </button>
+      </div>
+
+      <!--top right div-->
+      <div style="margin-left: 520px;"> 
+        <!--questions table-->
+        <h3>List of questions</h3>
+        <table class="ui celled table selectable questionTab" id="questionsTable" >
+          <thead>
+            <tr>
+              <th>Question Time</th>  <th>Text</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <br><br>
+
+    <!--new question-->
+    <button class="ui button" id="newQuestion">
+      New question
+    </button>
+    
+    <br>
+
+    <div id="submit_div">
+      <div class="ui input">
+        <input type="text" placeholder="Question" id="newText">
+      </div>
+      <button class="ui button" id="submitQuestion">
+        Submit
+      </button>
+    </div>
+
+    <br><br>
+
+    <!--answers div-->
+    <div id='answersdiv'>
+
+      <!--Info of the question-->
+      <p>Question: <span id="qtext"></span> </p>
+      <p>Time: <span id="qtime"></span> </p>
+      <p>User <span id="uid"></span>: <span id="uname"></span></p>
+
+      <h3>Answer</h3>
+      <!--answers table-->
+      <table class="ui celled table selectable" id="answersTable" >
+        <thead>
+          <tr>
+            <th>User</th>  <th>Name</th><th>Text</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+
+      <!--new answer-->
+      <button class="ui button" id="newAnswer">
+        New Answer
+      </button>
+
+      <div id="ans_submit_div">
+        <div class="ui input">
+          <input type="text" placeholder="Answer" id="newTextAnswer">
+        </div>
+        <button class="ui button" id="submitAnswer">
+          Submit
+        </button>
+      </div>
+    </div>
+  </body>
+</html>

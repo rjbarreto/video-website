@@ -1,0 +1,13 @@
+<!doctype html>
+<title>PRIVATE PAGE</title>
+<body>
+  username - {{ username }} {{name}}
+  <br><br>
+  <h1>Main Menu</h1>
+  <br>
+  <a href="{{ url_for("_listvideos") }}"> Video list</a>
+  <br>
+  <a href="{{ url_for("loglist") }}"> Log list (requires admin privilege)</a>
+  <br>
+  <a href="{{ url_for("listusers") }}"> User statistics (requires admin privilege)</a>  
+</body>

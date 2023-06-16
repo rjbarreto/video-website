@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script type="text/javascript" src="https://me.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=aJ-DpsJUCP35--FM3o2JhhcQMWAFa5LC2w1su40ljqP7X3koKf-iubdiBxtNcc8xqafhm5ia55Mhm50LneUft3daL6bdKcJRG6-mVO2Mm3iPKfkkxN7ZMDW9OhCRguoCcoYH1hwohp1r2SJJjX_iJQ" charset="UTF-8"></script><script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css"  href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.8.7/dist/semantic.css">
+    <script  src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.8.7/dist/semantic.js">  </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-xmlrpc/0.4.3/jquery.xmlrpc.js"> </script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <link href="https://vjs.zencdn.net/7.8.4/video-js.css" rel="stylesheet" />
+    <script src="http://vjs.zencdn.net/7.8.4/video.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-youtube/2.6.1/Youtube.min.js"></script>
+
+    <script>
+      // Get value from column 'field' from user table for user 'userID'
+      function getUser(userID, field){
+        $.ajax({
+          url: '/API/users/'+userID+'/',
+          type: "GET",
+          dataType: "json",
+          success: function (data) {
+            console.log(data)
+            $("#usr"+field+userID).html(data[field])
+            console.log("update info user "+userID)
+          },
+        })
+      }
+
+      // Update users table
+      function updateUserstable(){
+        $.ajax({
+          url: "/API/users/",
+          type: "GET",
+          dataType: "json",
+          success: function (data) {
+            console.log(data);
+            $('#usersTable > tbody:last-child').empty()
+            data["users"].forEach(v => {
+              console.log(v["user_id"]+" "+v["name"]+" "+v["admin"])
+              $('#usersTable > tbody:last-child').append('<tr> <td>'+ v["user_id"]+'</td><td>'+v["name"]+'</td><td id="usrviews'+v["user_id"]+'">xxx</td>'+'</td><td id="usrvideos'+v["user_id"]+'">xxx</td>'+'</td><td id="usrquestions'+v["user_id"]+'">xxx</td>'+'</td><td id="usranswers'+v["user_id"]+'">xxx</td></tr>');
+              //Update table with dynamic values
+              getUser(v["user_id"], 'views')
+              getUser(v["user_id"], 'videos')
+              getUser(v["user_id"], 'questions')
+              getUser(v["user_id"], 'answers')
+            });
+          }
+        });
+      }
+
+      $(document).ready(function(){
+        //update table
+        updateUserstable()
+      });
+    </script>
+  </head> 
+
+  <body>
+    <!--Users table-->
+    <h3>List of users</h3>
+    <table class="ui celled table selectable" id="usersTable" >
+      <thead>
+        <tr>
+          <th>User ID</th><th>Name</th><th>Videos viewed</th><th>Videos registered</th><th>Questions</th><th>Answers</th>
+        </tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+  </body>
+
+</html>

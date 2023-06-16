@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css"  href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.8.7/dist/semantic.css">
+    <script  src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.8.7/dist/semantic.js">  </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-xmlrpc/0.4.3/jquery.xmlrpc.js"> </script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <link href="https://vjs.zencdn.net/7.8.4/video-js.css" rel="stylesheet" />
+    <script src="http://vjs.zencdn.net/7.8.4/video.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-youtube/2.6.1/Youtube.min.js"></script>
+
+    <script>
+
+      var userid='{{user_id}}';
+
+      //Fill videos table with all the contents of the video db
+      function updateVideostable(){
+
+        $.ajax({
+          url: '/API/videos/',
+          type: "GET",
+          dataType: "json",
+          success: function (data) {
+            console.log(data);
+            $('#videosTable > tbody:last-child').empty()
+            data["videos"].forEach(v => {
+              console.log(v["video_id"]+" "+v["description"]+" "+v["questions"])
+              $('#videosTable > tbody:last-child').append('<tr><td>'+'<a href="/showvideo/'+v["video_id"]+'/">'+ v["description"]+'</a>'+ '</td><td>'+v["questions"]+'</td></tr>');
+            });
+          }
+        });
+      }
+
+      //Add new video to the db with the url and description submitted by the user
+      function addNewVideo(url, description){
+
+        let requestData={"description": description, 'url': url}
+        $.ajax({
+          url: '/API/videos/',
+          type: "POST",
+          dataType: "json",
+          contentType: 'application/json',
+          data: JSON.stringify(requestData),
+          
+          success: function(data){
+            console.log("resppnse for video creation"+data)
+            console.log(data)
+            updateVideostable()
+          },
+
+          complete: function(){
+            $.ajax({
+              // Increment user questions
+              url: '/API/users/'+userid+'/videos/',
+              type: "PUT",
+              dataType: "json",
+              success: function (data) {
+                console.log(data)
+              },
+            });
+          }
+        });
+      }
+
+      $(document).ready(function(){
+        //update table
+        updateVideostable()        
+        //Add video
+        $("#buttonAddVideo").click(function(){
+          newVideoURl = $("#newVideoURL").val()
+          newVideoDESC = $("#newVideoDescription").val()
+          console.log(newVideoDESC)
+          console.log(newVideoURl)
+          addNewVideo(newVideoURl, newVideoDESC)
+        })
+      });
+
+    </script>
+
+  </head>
+
+
+  <body>
+    <h3>List of videos</h3>
+    <!--List of videos-->
+    <table class="ui celled table selectable" id="videosTable" >
+      <thead>
+        <tr>
+            <th>Description</th>   <th>Questions</th>
+        </tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+
+    <!--Add new video-->
+    <h3>Add a new Video</h3>
+    <div class="ui input">
+      <input type="text" placeholder="Video URL" id="newVideoURL">
+    </div>
+    <div class="ui input">
+      <input type="text" placeholder="Video Description" id="newVideoDescription">
+    </div>
+    <button class="ui button" id="buttonAddVideo">
+      Add new Video
+    </button>
+  </body>
+</html>
